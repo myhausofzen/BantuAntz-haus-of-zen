@@ -24,7 +24,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       count: result.count,
       products: result.products,
       lastSynced: result.lastSynced,
-      source: result.source
+      source: result.source,
+      squareConnected: result.squareConnected,
+      error: result.error || null
     });
   } catch (err: any) {
     console.error('Error handling /api/square/catalog:', err);

@@ -25,12 +25,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     hasToken: !!creds.token,
     hasLocation: !!creds.locationId,
     hasAppId: !!creds.appId,
+    readyForCatalogSync: !!creds.token,
+    readyForPayments: !!(creds.token && creds.locationId && creds.appId),
     environment: creds.env,
     isProduction: creds.isProduction,
     baseUrl: creds.baseUrl,
     locationId: creds.locationId,
     appId: creds.appId,
-    maskedLocationId: creds.locationId ? `${creds.locationId.substring(0, 4)}••••` : '',
-    maskedAppId: creds.appId ? `${creds.appId.substring(0, 6)}••••` : ''
+    maskedToken: creds.token ? `${creds.token.substring(0, 5)}••••` : 'MISSING',
+    maskedLocationId: creds.locationId ? `${creds.locationId.substring(0, 4)}••••` : 'MISSING',
+    maskedAppId: creds.appId ? `${creds.appId.substring(0, 6)}••••` : 'MISSING'
   });
 }

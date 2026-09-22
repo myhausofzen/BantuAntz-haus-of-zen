@@ -27,9 +27,11 @@ export function getSquareCredentials() {
 
 export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
   products: Product[];
-  source: 'live' | 'cache';
+  source: 'live' | 'cache' | 'fallback';
   lastSynced: string;
   count: number;
+  squareConnected: boolean;
+  error?: string;
 }> {
   const creds = getSquareCredentials();
   const now = Date.now();
@@ -40,7 +42,8 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
       products: catalogCache.products,
       source: 'cache',
       lastSynced: new Date(catalogCache.timestamp).toISOString(),
-      count: catalogCache.products.length
+      count: catalogCache.products.length,
+      squareConnected: true
     };
   }
 
@@ -48,9 +51,11 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
   if (!creds.token) {
     return {
       products: INITIAL_PRODUCTS,
-      source: 'live',
+      source: 'fallback',
       lastSynced: new Date().toISOString(),
-      count: INITIAL_PRODUCTS.length
+      count: INITIAL_PRODUCTS.length,
+      squareConnected: false,
+      error: 'SQUARE_ACCESS_TOKEN is not set or empty in environment variables'
     };
   }
 
@@ -64,12 +69,21 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
     });
 
     if (!response.ok) {
-      console.warn(`Square catalog API returned status ${response.status}. Using fallback products.`);
+      let errorDetail = `Square catalog API error (HTTP ${response.status})`;
+      try {
+        const errJson = await response.json();
+        if (errJson.errors?.[0]?.detail) {
+          errorDetail += `: ${errJson.errors[0].detail}`;
+        }
+      } catch (e) {}
+      console.warn(`${errorDetail}. Using fallback catalog.`);
       return {
         products: catalogCache ? catalogCache.products : INITIAL_PRODUCTS,
-        source: 'cache',
+        source: 'fallback',
         lastSynced: new Date().toISOString(),
-        count: (catalogCache ? catalogCache.products : INITIAL_PRODUCTS).length
+        count: (catalogCache ? catalogCache.products : INITIAL_PRODUCTS).length,
+        squareConnected: false,
+        error: errorDetail
       };
     }
 
@@ -190,15 +204,18 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
       products: finalProducts,
       source: 'live',
       lastSynced: new Date(now).toISOString(),
-      count: finalProducts.length
+      count: finalProducts.length,
+      squareConnected: true
     };
   } catch (err: any) {
     console.error('Error in Square Live Catalog sync:', err);
     return {
       products: catalogCache ? catalogCache.products : INITIAL_PRODUCTS,
-      source: 'cache',
+      source: 'fallback',
       lastSynced: new Date().toISOString(),
-      count: (catalogCache ? catalogCache.products : INITIAL_PRODUCTS).length
+      count: (catalogCache ? catalogCache.products : INITIAL_PRODUCTS).length,
+      squareConnected: false,
+      error: err.message || 'Error communicating with Square catalog API'
     };
   }
 }

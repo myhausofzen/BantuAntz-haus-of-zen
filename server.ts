@@ -143,7 +143,9 @@ async function startServer() {
       count: result.count,
       products: result.products,
       lastSynced: result.lastSynced,
-      source: result.source
+      source: result.source,
+      squareConnected: result.squareConnected,
+      error: result.error || null
     });
   });
 
@@ -156,6 +158,8 @@ async function startServer() {
       products: result.products,
       lastSynced: result.lastSynced,
       source: result.source,
+      squareConnected: result.squareConnected,
+      error: result.error || null,
       message: 'Square Catalog freshly re-synchronized'
     });
   });
