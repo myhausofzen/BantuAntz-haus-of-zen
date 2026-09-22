@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, ShieldCheck, Zap, CreditCard, CheckCircle2, Lock, 
-  AlertCircle, ExternalLink, RefreshCw, Activity, ShoppingBag, Sparkles, Heart,
-  Smartphone, ArrowRight, Loader2
+  X, Lock, CheckCircle2, AlertCircle, ExternalLink, 
+  RefreshCw, ShoppingBag, Heart, Loader2, ArrowRight
 } from 'lucide-react';
 import { 
   executeFastCheckout, 
-  runSquareTestPayment, 
   getSquareStatus, 
   checkSquareOrderStatus,
   CheckoutResult, 
-  SquareStatusResponse, 
-  SquareTestPaymentResult 
+  SquareStatusResponse 
 } from '../services/checkoutService';
 
 interface FastCheckoutModalProps {
@@ -29,15 +26,8 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
   onSuccess,
   onContinueShopping
 }) => {
-  const [activeView, setActiveView] = useState<'checkout' | 'test-payment'>('checkout');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple_pay' | 'google_pay' | 'cash_app' | 'square_hosted'>('card');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [postalCode, setPostalCode] = useState('90802');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderResult, setOrderResult] = useState<CheckoutResult | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -48,21 +38,19 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
   const [isInitializingCard, setIsInitializingCard] = useState(false);
   const [sdkLoadError, setSdkLoadError] = useState<string | null>(null);
 
-  // Pending Hosted Checkout state (Apple Pay, Cash App, Google Pay, Square Hosted)
+  // Square Hosted Checkout state (Apple Pay, Cash App, Google Pay or Fallback)
   const [pendingHostedOrder, setPendingHostedOrder] = useState<{
     orderId: string;
     paymentLinkUrl: string;
     grandTotal: number;
-    method: string;
   } | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
 
   const [squareStatus, setSquareStatus] = useState<SquareStatusResponse | null>(null);
 
-  // Test Payment State
-  const [isTestingPayment, setIsTestingPayment] = useState(false);
-  const [testResult, setTestResult] = useState<SquareTestPaymentResult | null>(null);
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const grandTotal = subtotal;
 
   useEffect(() => {
     if (isOpen) {
@@ -74,7 +62,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
 
   // Mount Square Web Payments SDK Card element
   useEffect(() => {
-    if (!isOpen || paymentMethod !== 'card' || !squareStatus?.appId || !squareStatus?.locationId) {
+    if (!isOpen || !squareStatus?.appId || !squareStatus?.locationId) {
       return;
     }
 
@@ -84,7 +72,6 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
       if (typeof window === 'undefined') return false;
       if ((window as any).Square) return true;
 
-      // Ensure script tag exists
       let script = document.querySelector('script[src*="square.js"]') as HTMLScriptElement;
       if (!script) {
         script = document.createElement('script');
@@ -93,8 +80,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
         document.head.appendChild(script);
       }
 
-      // Retry up to 5 seconds
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 20; i++) {
         if ((window as any).Square) return true;
         await new Promise((r) => setTimeout(r, 200));
       }
@@ -110,7 +96,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
         if (!isMounted) return;
 
         if (!isReady || !(window as any).Square) {
-          setSdkLoadError('Square Payments script is taking longer to load.');
+          setSdkLoadError('Square Payments SDK script unavailable');
           setSquareCardReady(false);
           return;
         }
@@ -131,7 +117,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
           style: {
             input: {
               fontSize: '14px',
-              fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              fontFamily: 'Montserrat, sans-serif',
               color: '#1c1917'
             },
             'input::placeholder': {
@@ -139,7 +125,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
             },
             '.input-container': {
               borderColor: '#e7e5e4',
-              borderRadius: '10px'
+              borderRadius: '8px'
             },
             '.input-container.is-focus': {
               borderColor: '#1c1917'
@@ -160,8 +146,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
           setSdkLoadError(null);
         }
       } catch (err: any) {
-        console.warn('Square Web Payments Card initialization notice:', err);
-        setSdkLoadError(err.message || 'Direct card form could not mount in this view.');
+        setSdkLoadError(err.message || 'Direct card form could not mount');
         setSquareCardReady(false);
       } finally {
         if (isMounted) {
@@ -185,89 +170,24 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
       }
       setSquareCardReady(false);
     };
-  }, [isOpen, paymentMethod, squareStatus?.appId, squareStatus?.locationId]);
-
-  // Card formatting and brand detection
-  const getCardBrand = (num: string) => {
-    const clean = num.replace(/\D/g, '');
-    if (/^4/.test(clean)) return { name: 'Visa', bg: 'bg-blue-900 text-white' };
-    if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/.test(clean)) return { name: 'Mastercard', bg: 'bg-red-700 text-white' };
-    if (/^3[47]/.test(clean)) return { name: 'Amex', bg: 'bg-sky-700 text-white' };
-    if (/^(6011|65|64[4-9])/.test(clean)) return { name: 'Discover', bg: 'bg-amber-700 text-white' };
-    return null;
-  };
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    const isAmex = /^3[47]/.test(raw);
-    const maxDigits = isAmex ? 15 : 16;
-    const trimmed = raw.substring(0, maxDigits);
-    
-    // Group in blocks
-    let formatted = '';
-    if (isAmex) {
-      if (trimmed.length > 10) {
-        formatted = `${trimmed.substring(0, 4)} ${trimmed.substring(4, 10)} ${trimmed.substring(10, 15)}`;
-      } else if (trimmed.length > 4) {
-        formatted = `${trimmed.substring(0, 4)} ${trimmed.substring(4, 10)}`;
-      } else {
-        formatted = trimmed;
-      }
-    } else {
-      const parts = [];
-      for (let i = 0; i < trimmed.length; i += 4) {
-        parts.push(trimmed.substring(i, i + 4));
-      }
-      formatted = parts.join(' ');
-    }
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').substring(0, 4);
-    if (raw.length >= 3) {
-      setExpiry(`${raw.substring(0, 2)}/${raw.substring(2, 4)}`);
-    } else {
-      setExpiry(raw);
-    }
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length === 10) {
-      setCustomerPhone(`(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6, 10)}`);
-    } else {
-      setCustomerPhone(raw);
-    }
-  };
+  }, [isOpen, squareStatus?.appId, squareStatus?.locationId]);
 
   if (!isOpen) return null;
 
-  // Check if testing "tea time" or similar zero-shipping test item
-  const isTeaTimeTest = items.some(item => 
-    (item.name || '').toLowerCase().includes('tea time') || 
-    (item.productId || '').toLowerCase().includes('tea time') ||
-    item.productId === 'TFAII2LGXG7XLHZHNPG6O75Y'
-  );
-
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  // No local shipping or handling fee: all fees and fulfillment are handled directly on Square
-  const grandTotal = subtotal;
-
-  const handlePay = async (e: React.FormEvent) => {
+  // Handle direct card payment
+  const handleCardPay = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentError(null);
     setVerificationNotice(null);
 
-    if (!customerEmail) {
-      setPaymentError('Please enter your email address for your order receipt.');
+    if (!customerEmail.trim()) {
+      setPaymentError('Please enter your email address for your order confirmation receipt.');
       return;
     }
 
+    // If card is ready in direct view, tokenize
     let sourceId: string | undefined = undefined;
-
-    if (paymentMethod === 'card' && cardInstanceRef.current && squareCardReady) {
+    if (squareCardReady && cardInstanceRef.current) {
       try {
         setIsProcessing(true);
         const tokenResult = await cardInstanceRef.current.tokenize();
@@ -280,7 +200,6 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
           return;
         }
       } catch (tokenErr: any) {
-        console.warn('Square card tokenization error:', tokenErr);
         setPaymentError(tokenErr.message || 'Could not tokenize card.');
         setIsProcessing(false);
         return;
@@ -288,58 +207,93 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
     }
 
     setIsProcessing(true);
-    setOrderResult(null);
 
     const result = await executeFastCheckout({
       items,
-      customerEmail,
-      customerName: customerName || 'Apothecary Patron',
-      customerPhone,
-      paymentMethod,
+      customerEmail: customerEmail.trim(),
+      customerName: customerName.trim() || 'Apothecary Patron',
+      paymentMethod: sourceId ? 'card' : 'square_hosted',
       sourceId,
       shippingAddress: {
-        line1: '123 Serenity Blvd',
-        city: 'Long Beach',
+        line1: 'Direct Order',
+        city: 'Haus of Zen',
         state: 'CA',
-        postalCode: postalCode || '90802'
+        postalCode: '90802'
       }
     });
 
     setIsProcessing(false);
 
-    // If Square accepted payment immediately (Card)
     if (result.success) {
       setOrderResult(result);
       onSuccess(result);
       return;
     }
 
-    // If Apple Pay, Cash App, or Google Pay initiated via Square Hosted Checkout
     if (result.pendingPayment && result.paymentLinkUrl) {
       setPendingHostedOrder({
         orderId: result.orderId,
         paymentLinkUrl: result.paymentLinkUrl,
-        grandTotal,
-        method: paymentMethod
+        grandTotal
       });
-      // Try opening the Square checkout link directly
       try {
         window.open(result.paymentLinkUrl, '_blank', 'noopener,noreferrer');
-      } catch (e) {
-        console.warn('Could not auto-open checkout popup', e);
-      }
+      } catch (e) {}
       return;
     }
 
-    // If Square declined or payment failed
     setPaymentError(
       result.errorDetail || 
       result.message || 
-      'Payment was not accepted by Square. Please check your payment details or try a different payment method.'
+      'Payment was not accepted by Square. Please try again.'
     );
   };
 
-  // Verify payment status with Square for hosted orders
+  // Handle Square Hosted Checkout directly (Apple Pay, Google Pay, Cash App, or fallback)
+  const handleHostedPay = async () => {
+    setPaymentError(null);
+    if (!customerEmail.trim()) {
+      setPaymentError('Please enter your email address so we can send your receipt.');
+      return;
+    }
+
+    setIsProcessing(true);
+    const result = await executeFastCheckout({
+      items,
+      customerEmail: customerEmail.trim(),
+      customerName: customerName.trim() || 'Apothecary Patron',
+      paymentMethod: 'square_hosted',
+      shippingAddress: {
+        line1: 'Direct Order',
+        city: 'Haus of Zen',
+        state: 'CA',
+        postalCode: '90802'
+      }
+    });
+    setIsProcessing(false);
+
+    if (result.pendingPayment && result.paymentLinkUrl) {
+      setPendingHostedOrder({
+        orderId: result.orderId,
+        paymentLinkUrl: result.paymentLinkUrl,
+        grandTotal
+      });
+      try {
+        window.open(result.paymentLinkUrl, '_blank', 'noopener,noreferrer');
+      } catch (e) {}
+      return;
+    }
+
+    if (result.success) {
+      setOrderResult(result);
+      onSuccess(result);
+      return;
+    }
+
+    setPaymentError(result.errorDetail || result.message || 'Unable to open Square checkout.');
+  };
+
+  // Verify hosted payment
   const handleVerifySquarePayment = async () => {
     if (!pendingHostedOrder) return;
 
@@ -355,7 +309,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
         orderId: pendingHostedOrder.orderId,
         totalCharged: pendingHostedOrder.grandTotal,
         timestamp: new Date().toISOString(),
-        paymentMethod: pendingHostedOrder.method,
+        paymentMethod: 'square_hosted',
         environment: 'production',
         isLive: true,
         message: 'Square Live Payment accepted and verified.'
@@ -364,16 +318,14 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
       try {
         const existing = JSON.parse(localStorage.getItem('haus_of_zen_orders') || '[]');
         localStorage.setItem('haus_of_zen_orders', JSON.stringify([acceptedResult, ...existing]));
-      } catch (e) {
-        console.warn('Could not save order', e);
-      }
+      } catch (e) {}
 
       setPendingHostedOrder(null);
       setOrderResult(acceptedResult);
       onSuccess(acceptedResult);
     } else {
       setVerificationNotice(
-        'Square has not yet received confirmation of this payment. Please finish submitting your payment in the Square window and click Verify again.'
+        'Square has not confirmed payment completion yet. Please finish checking out in the Square window and click Verify.'
       );
     }
   };
@@ -389,85 +341,47 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl p-6 md:p-8">
+      <div className="bg-white border border-stone-200/90 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-6 sm:p-7">
         
-        {/* Modal Header */}
-        <div className="flex justify-between items-start mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-stone-900 text-amber-400 flex items-center justify-center shadow-sm">
-              <Zap className="w-4 h-4 fill-amber-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-serif text-2xl text-stone-900">Live Checkout</h3>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-sans font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                  Live
-                </span>
-              </div>
-              <p className="text-[11px] font-sans text-stone-500">
-                connect.squareup.com • Official Square Production Gateway
-              </p>
-            </div>
+        {/* Simple, Calm Header */}
+        <div className="flex justify-between items-center pb-4 border-b border-stone-100 mb-5">
+          <div>
+            <h3 className="font-serif text-2xl text-stone-900 font-medium">Checkout</h3>
+            <p className="text-xs text-stone-500 font-sans mt-0.5">Haus of Zen Apothecary</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full text-stone-400 hover:text-stone-800 hover:bg-stone-200 transition-colors"
+            aria-label="Close"
+            className="p-2 rounded-full text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 1. ORDER PLACED & ACCEPTED (SWEET THANK YOU SCREEN) */}
+        {/* 1. ORDER SUCCESS SCREEN */}
         {orderResult?.success ? (
-          <div className="text-center py-6 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto mb-3.5 shadow-xs">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/80 text-[10px] font-sans tracking-widest uppercase text-amber-900 font-semibold mb-2">
-              <Sparkles className="w-3 h-3 text-amber-600" />
-              <span>Order Placed & Payment Accepted</span>
+          <div className="text-center py-4 animate-fade-in space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
+              <CheckCircle2 className="w-7 h-7" />
             </div>
 
-            <h2 className="font-serif text-2xl sm:text-3xl text-stone-900 mb-2">
-              Thank You for Shopping with Us!
-            </h2>
-
-            {/* Personalized botanical thank you message */}
-            <div className="bg-amber-50/70 border border-amber-200/70 rounded-2xl p-4 sm:p-5 mb-5 text-stone-700 font-sans text-xs leading-relaxed space-y-2 text-center">
-              <p className="font-semibold text-stone-900 text-sm flex items-center justify-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline flex-shrink-0" />
-                <span>With deep gratitude & warm botanical blessings</span>
+            <div>
+              <h2 className="font-serif text-2xl text-stone-900 font-medium">
+                Thank You for Your Order
+              </h2>
+              <p className="text-xs text-stone-600 font-sans mt-1">
+                Your payment of <span className="font-semibold text-stone-900">${grandTotal.toFixed(2)}</span> has been confirmed.
               </p>
-              <p className="text-stone-600 text-xs max-w-md mx-auto leading-relaxed">
-                Your order has been officially accepted and paid. We handcraft every herbal tea blend, restorative womb tonic, and small-batch apothecary remedy with pure organic botanicals, sacred care, and healing intention.
-              </p>
-              {customerEmail && (
-                <p className="text-[11px] text-stone-500 pt-2 border-t border-amber-200/50">
-                  A confirmation receipt and order summary have been sent to <span className="font-semibold text-stone-800">{customerEmail}</span>.
-                </p>
-              )}
             </div>
 
-            {/* Order summary info */}
-            <div className="bg-white border border-stone-200 rounded-xl p-4 text-left text-xs font-sans space-y-2 mb-5 shadow-xs">
-              <div className="flex justify-between">
-                <span className="text-stone-500">Square Order ID:</span>
-                <span className="font-mono text-stone-900 font-semibold">{orderResult.orderId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Payment Status:</span>
-                <span className="font-semibold text-emerald-700 uppercase">Paid & Accepted</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Processing Gateway:</span>
-                <span className="font-semibold text-stone-700">Square Live Production</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-stone-100 text-stone-900 font-bold">
-                <span>Total Paid:</span>
-                <span className="font-serif text-base text-stone-900">${grandTotal.toFixed(2)}</span>
-              </div>
+            <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-4 text-xs font-sans text-stone-700 leading-relaxed text-center space-y-1.5">
+              <p className="font-semibold text-stone-900 flex items-center justify-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
+                <span>Handcrafted with Care & Healing Intention</span>
+              </p>
+              <p className="text-[11px] text-stone-600">
+                A confirmation receipt has been sent to <span className="font-semibold text-stone-900">{customerEmail}</span>.
+              </p>
             </div>
 
             {orderResult.receiptUrl && (
@@ -475,80 +389,67 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
                 href={orderResult.receiptUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans text-xs tracking-wider uppercase font-bold transition-all flex items-center justify-center gap-2 mb-3 shadow-sm cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-sans text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>View Square Payment Receipt</span>
-                <ExternalLink className="w-4 h-4" />
+                <span>View Square Receipt</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
 
-            {/* Return to Shop */}
             <button
               type="button"
               onClick={handleReturnToShop}
-              className="w-full py-3.5 px-6 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs tracking-widest uppercase font-bold transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg cursor-pointer"
+              className="w-full py-3.5 px-6 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs tracking-wider uppercase font-bold transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4 text-amber-300" />
-              <span>Return to Haus of Zen & Keep Shopping</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full mt-2 py-2 text-stone-500 hover:text-stone-800 font-sans text-[11px] uppercase tracking-wider transition-colors cursor-pointer"
-            >
-              Close Window
+              <span>Continue Shopping</span>
             </button>
           </div>
         ) : pendingHostedOrder ? (
-          /* 2. PENDING SQUARE HOSTED CHECKOUT (APPLE PAY, CASH APP, GOOGLE PAY) */
-          <div className="py-4 space-y-4 animate-fade-in">
-            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 text-xs font-sans space-y-2">
-              <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
-                <Smartphone className="w-4 h-4 text-amber-700" />
-                <span>Square Checkout Window Opened</span>
-              </div>
-              <p className="text-stone-600 text-[11px] leading-relaxed">
-                Please complete your <strong>${pendingHostedOrder.grandTotal.toFixed(2)}</strong> payment using {pendingHostedOrder.method === 'cash_app' ? 'Cash App Pay' : pendingHostedOrder.method === 'apple_pay' ? 'Apple Pay' : 'Google Pay'} in the Square checkout window.
+          /* 2. PENDING SQUARE WINDOW (VERIFY PAYMENT) */
+          <div className="py-2 space-y-4 animate-fade-in text-center">
+            <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-4 text-xs font-sans text-stone-700 space-y-2">
+              <p className="font-semibold text-stone-900 text-sm">
+                Square Checkout Window Opened
               </p>
-              <p className="text-[10px] text-stone-500">
-                Your order is not finalized until payment is accepted by Square.
+              <p className="text-[12px] text-stone-600">
+                Complete your payment of <strong>${pendingHostedOrder.grandTotal.toFixed(2)}</strong> in the Square tab.
               </p>
             </div>
 
             {verificationNotice && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-sans flex items-start gap-2 animate-fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] leading-relaxed">{verificationNotice}</p>
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-sans flex items-center gap-2 text-left">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <span>{verificationNotice}</span>
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 pt-1">
               <a
                 href={pendingHostedOrder.paymentLinkUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-3.5 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans text-xs tracking-wider uppercase font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
               >
-                <span>Re-open Square Checkout Window</span>
-                <ExternalLink className="w-4 h-4" />
+                <span>Re-open Square Checkout</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </a>
 
               <button
                 type="button"
                 disabled={isVerifyingPayment}
                 onClick={handleVerifySquarePayment}
-                className="w-full py-3.5 px-6 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs tracking-wider uppercase font-bold transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+                className="w-full py-3.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md disabled:opacity-60 cursor-pointer"
               >
                 {isVerifyingPayment ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                    <span>Verifying with Square Live...</span>
+                    <span>Verifying with Square...</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>I Have Completed Payment (Verify & Accept Order)</span>
+                    <span>I Finished Payment (Verify Order)</span>
                   </>
                 )}
               </button>
@@ -559,355 +460,153 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
                   setPendingHostedOrder(null);
                   setPaymentError(null);
                 }}
-                className="w-full py-2.5 rounded-xl border border-stone-300 text-stone-700 font-sans text-xs hover:bg-stone-100 transition-colors"
+                className="text-stone-500 hover:text-stone-800 text-xs underline font-sans pt-1"
               >
-                Change Payment Method / Enter Card Details
+                Back to Checkout
               </button>
             </div>
           </div>
         ) : (
-          /* 3. CHECKOUT FORM (CUSTOMER ENTERS PAYMENT DETAILS) */
-          <form onSubmit={handlePay} className="space-y-4">
+          /* 3. STREAMLINED CHECKOUT FORM */
+          <form onSubmit={handleCardPay} className="space-y-4">
             
-            {/* Payment Error / Decline Alert */}
+            {/* Error Message */}
             {paymentError && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-sans space-y-2 animate-fade-in">
-                <div className="flex items-center gap-2 font-bold">
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  <span>Payment Not Accepted</span>
-                </div>
-                <p className="text-[11px] leading-relaxed text-rose-800">{paymentError}</p>
-
-                {paymentError.toLowerCase().includes('square_access_token') && (
-                  <div className="mt-2 p-2.5 bg-white/90 rounded-lg border border-rose-200 text-[11px] text-stone-700 space-y-1.5 shadow-xs">
-                    <p className="font-semibold text-stone-900 flex items-center gap-1.5">
-                      <span>Vercel Deployment Setup Required</span>
-                    </p>
-                    <p className="text-stone-600 leading-normal">
-                      When deployed on Vercel, Square environment variables must be added to your Vercel Project Settings:
-                    </p>
-                    <div className="font-mono text-[10px] bg-stone-100 p-2 rounded border border-stone-200 space-y-0.5 text-stone-800">
-                      <div>SQUARE_ACCESS_TOKEN = (Your Square Production Access Token)</div>
-                      <div>SQUARE_APPLICATION_ID = (Your Square App ID)</div>
-                      <div>SQUARE_LOCATION_ID = (Your Square Location ID)</div>
-                      <div>SQUARE_ENVIRONMENT = production</div>
-                    </div>
-                    <p className="text-[10px] text-stone-500">
-                      Go to <span className="font-semibold">Vercel Dashboard → Project Settings → Environment Variables</span>, add these variables, and click <span className="font-semibold">Redeploy</span>.
-                    </p>
-                  </div>
-                )}
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-sans flex items-start gap-2 animate-fade-in">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <span className="leading-snug">{paymentError}</span>
               </div>
             )}
 
-            {/* Order Items Preview */}
-            <div className="bg-white border border-stone-200/80 rounded-xl p-3.5 divide-y divide-stone-100">
+            {/* Compact Order Items */}
+            <div className="bg-stone-50 border border-stone-100 rounded-xl p-3 divide-y divide-stone-200/50">
               {items.map((item, idx) => (
-                <div key={idx} className={`flex items-center justify-between py-1.5 ${idx === 0 ? 'pt-0' : ''}`}>
-                  <div className="flex items-center gap-3">
+                <div key={idx} className={`flex items-center justify-between py-1 text-xs font-sans ${idx === 0 ? 'pt-0' : ''}`}>
+                  <div className="flex items-center gap-2.5">
                     {item.image && (
-                      <img src={item.image} alt={item.name} className="w-9 h-9 rounded-lg object-cover" />
+                      <img src={item.image} alt={item.name} className="w-8 h-8 rounded-md object-cover" />
                     )}
                     <div>
-                      <h5 className="font-serif text-sm text-stone-900 leading-tight">{item.name}</h5>
-                      <span className="text-[10px] text-stone-500 font-sans">
-                        Qty: {item.quantity} {item.volume ? `• ${item.volume}` : ''}
-                      </span>
+                      <p className="font-serif text-sm text-stone-900 font-medium leading-tight">{item.name}</p>
+                      <p className="text-[11px] text-stone-500">Qty: {item.quantity}</p>
                     </div>
                   </div>
-                  <span className="font-serif text-sm font-semibold text-stone-900">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </span>
+                  <span className="font-semibold text-stone-900">${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
+              <div className="flex justify-between items-center pt-2.5 mt-1 border-t border-stone-200/70 text-stone-900">
+                <span className="text-xs font-sans font-medium text-stone-600">Total:</span>
+                <span className="font-serif text-lg font-bold">${grandTotal.toFixed(2)}</span>
+              </div>
             </div>
 
-            {/* Quick Payment Method Buttons */}
+            {/* Contact Email Field */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600">
-                  Payment Method *
-                </label>
-                <span className="text-[10px] font-sans text-stone-400">
-                  Direct Card or Digital Wallet
-                </span>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('card');
-                    setPaymentError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-[11px] font-sans font-semibold transition-all flex flex-col items-center justify-center gap-1 ${
-                    paymentMethod === 'card'
-                      ? 'bg-stone-900 text-white border-stone-900 shadow-sm'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span className="truncate">Card</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('square_hosted');
-                    setPaymentError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-[11px] font-sans font-semibold transition-all flex flex-col items-center justify-center gap-1 ${
-                    paymentMethod === 'square_hosted'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span className="truncate">Square Link</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('apple_pay');
-                    setPaymentError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-[11px] font-sans font-semibold transition-all flex flex-col items-center justify-center gap-1 ${
-                    paymentMethod === 'apple_pay'
-                      ? 'bg-black text-white border-black shadow-sm'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span className="truncate">Apple Pay</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('cash_app');
-                    setPaymentError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-[11px] font-sans font-semibold transition-all flex flex-col items-center justify-center gap-1 ${
-                    paymentMethod === 'cash_app'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span className="truncate">Cash App</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('google_pay');
-                    setPaymentError(null);
-                  }}
-                  className={`py-2 px-1.5 rounded-xl border text-[11px] font-sans font-semibold transition-all flex flex-col items-center justify-center gap-1 ${
-                    paymentMethod === 'google_pay'
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span className="truncate">Google Pay</span>
-                </button>
-              </div>
+              <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600 mb-1">
+                Email for Receipt *
+              </label>
+              <input
+                type="email"
+                required
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full bg-white border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900 transition-colors"
+              />
             </div>
 
-            {/* Credit Card Fields if selected (Square Web Payments SDK) */}
-            {paymentMethod === 'card' ? (
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 space-y-2.5 animate-fade-in shadow-xs">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Square Secure Card Processing</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] text-stone-400 font-sans">
-                    <span className="px-1 py-0.5 rounded bg-stone-100 text-stone-600 font-mono">VISA</span>
-                    <span className="px-1 py-0.5 rounded bg-stone-100 text-stone-600 font-mono">MC</span>
-                    <span className="px-1 py-0.5 rounded bg-stone-100 text-stone-600 font-mono">AMEX</span>
-                    <span className="px-1 py-0.5 rounded bg-stone-100 text-stone-600 font-mono">DISC</span>
+            {/* Full Name (Optional) */}
+            <div>
+              <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600 mb-1">
+                Name <span className="text-[10px] font-normal text-stone-400">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Julian Rhys"
+                className="w-full bg-white border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900 transition-colors"
+              />
+            </div>
+
+            {/* Payment Options */}
+            <div className="space-y-3 pt-1">
+              
+              {/* Direct Card Container (Loads when supported) */}
+              <div className="bg-stone-50/70 border border-stone-200/80 rounded-xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between text-xs text-stone-700 pb-1 border-b border-stone-200/50">
+                  <span className="font-semibold text-[11px] uppercase tracking-wider text-stone-600 font-sans">
+                    Credit / Debit Card
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-stone-400 font-mono">
+                    <span>VISA</span>
+                    <span>•</span>
+                    <span>MC</span>
+                    <span>•</span>
+                    <span>AMEX</span>
                   </div>
                 </div>
 
                 {isInitializingCard && (
-                  <div className="py-4 flex items-center justify-center gap-2 text-xs text-stone-500">
-                    <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
-                    <span>Connecting to Square encrypted card form...</span>
+                  <div className="py-3 flex items-center justify-center gap-2 text-xs text-stone-500">
+                    <Loader2 className="w-4 h-4 animate-spin text-stone-600" />
+                    <span>Preparing secure card form...</span>
                   </div>
                 )}
 
-                {/* Container where Square Web Payments SDK attaches */}
+                {/* Square Card Form Mount */}
                 <div 
                   id="square-card-container" 
-                  className={`w-full transition-opacity min-h-[95px] ${squareCardReady ? 'opacity-100 block' : 'opacity-70'}`} 
+                  className="w-full min-h-[90px]"
                 />
 
-                {sdkLoadError && !squareCardReady && (
-                  <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <ShieldCheck className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-stone-900">Direct Square Payment</p>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          When viewed inside embedded preview frames, bank regulations require an unnested window or Square checkout link to complete your payment directly to your Haus of Zen account.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('square_hosted')}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                      >
-                        <span>Continue with Square Checkout</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => window.open(window.location.href, '_blank')}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-sans font-medium text-[11px] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                      >
-                        <span>Open in Full Browser Tab</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Primary Card Pay Button */}
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                      <span>Processing Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Pay ${grandTotal.toFixed(2)} with Card</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
-                <div className="pt-1 flex items-center justify-between text-[10px] text-stone-400 border-t border-stone-100">
-                  <span className="flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-stone-400" />
-                    256-bit SSL encrypted by Square Live
+              {/* Digital Wallets & Square Checkout Button */}
+              <div className="text-center space-y-2 pt-1">
+                <div className="relative flex items-center justify-center">
+                  <div className="border-t border-stone-200 w-full"></div>
+                  <span className="bg-white px-3 text-[10px] uppercase tracking-widest text-stone-400 font-sans font-semibold">
+                    or quick pay with
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('square_hosted')}
-                    className="text-stone-500 hover:text-stone-900 underline"
-                  >
-                    Prefer Square checkout page?
-                  </button>
+                  <div className="border-t border-stone-200 w-full"></div>
                 </div>
-              </div>
-            ) : paymentMethod === 'square_hosted' ? (
-              <div className="bg-amber-50/50 border border-amber-200/80 rounded-xl p-3.5 text-xs text-stone-700 flex items-start gap-3 animate-fade-in shadow-xs">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-800 flex-shrink-0 mt-0.5">
-                  <ExternalLink className="w-4 h-4 text-amber-700" />
-                </div>
-                <div className="text-[11px] leading-tight space-y-1">
-                  <p className="font-semibold text-stone-900">
-                    Square Hosted Checkout Link
-                  </p>
-                  <p className="text-stone-600">
-                    Generates an official Square payment link for ${grandTotal.toFixed(2)}. Accepts all Credit Cards, Debit Cards, Apple Pay, Google Pay, and Cash App.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white border border-stone-200 rounded-xl p-3.5 text-xs text-stone-600 flex items-center gap-3 animate-fade-in shadow-xs">
-                <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-800 flex-shrink-0">
-                  <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
-                </div>
-                <div className="text-[11px] leading-tight space-y-0.5">
-                  <p className="font-semibold text-stone-900">
-                    {paymentMethod === 'apple_pay' && 'Apple Pay via Square Live'}
-                    {paymentMethod === 'cash_app' && 'Cash App Pay via Square Live'}
-                    {paymentMethod === 'google_pay' && 'Google Pay via Square Live'}
-                  </p>
-                  <p className="text-stone-500">
-                    You will be directed to Square's secure checkout. Once accepted by Square, your order will be confirmed with a receipt.
-                  </p>
-                </div>
-              </div>
-            )}
 
-            {/* Contact Information */}
-            <div className="space-y-2.5">
-              <div>
-                <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600 mb-1">
-                  Email Address for Order Confirmation & Receipt *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  placeholder="patron@myhausofzen.com"
-                  className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900"
-                />
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={handleHostedPay}
+                  className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  <span>Apple Pay, Google Pay, or Cash App</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Julian Rhys"
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-sans font-semibold uppercase tracking-wider text-stone-600 mb-1">
-                    Phone <span className="text-[10px] font-normal text-stone-400">(Optional)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={handlePhoneChange}
-                    placeholder="(310) 925-0920"
-                    className="w-full bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900"
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Totals Summary */}
-            <div className="pt-2 border-t border-stone-200 text-xs font-sans text-stone-600 space-y-1">
-              <div className="flex justify-between">
-                <span>Items Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-stone-500 text-[11px]">
-                <span>Shipping &amp; Fees:</span>
-                <span className="text-stone-700 font-medium">Handled directly on Square ($0.00 here)</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold text-stone-900 pt-1.5 border-t border-stone-200">
-                <span>Total Due:</span>
-                <span className="font-serif text-lg text-stone-900">${grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Submit Action */}
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full py-3.5 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans text-xs tracking-widest uppercase font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-            >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-stone-950" />
-                  <span>Processing Payment with Square...</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>
-                    {paymentMethod === 'card'
-                      ? `Pay $${grandTotal.toFixed(2)} & Place Order`
-                      : `Proceed to Square Checkout ($${grandTotal.toFixed(2)})`}
-                  </span>
-                </>
-              )}
-            </button>
-
-            <div className="text-center text-[10px] text-stone-400 font-sans flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Orders are only confirmed once payment is accepted by Square Live.</span>
+            {/* Footer Trust */}
+            <div className="pt-2 text-center text-[10px] text-stone-400 font-sans flex items-center justify-center gap-1.5">
+              <Lock className="w-3 h-3 text-stone-400" />
+              <span>Secured by Square • 256-bit encryption</span>
             </div>
 
           </form>
