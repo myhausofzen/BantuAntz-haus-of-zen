@@ -334,7 +334,9 @@ export const executeFastCheckout = async (payload: FastCheckoutPayload): Promise
       customerEmail: payload.customerEmail,
       customerName: payload.customerName,
       customerPhone: sanitizedPhone,
-      redirectUrl: typeof window !== 'undefined' ? window.location.origin : 'https://www.myhausofzen.com'
+      redirectUrl: typeof window !== 'undefined' 
+        ? `${window.location.origin}?order_status=success` 
+        : 'https://www.myhausofzen.com?order_status=success'
     });
 
     if (linkRes.success && linkRes.paymentLinkUrl) {

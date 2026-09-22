@@ -10,6 +10,7 @@ import { ProductDetail } from './components/ProductDetail';
 import { Appointments } from './components/Appointments';
 import { CartDrawer } from './components/CartDrawer';
 import { FastCheckoutModal } from './components/FastCheckoutModal';
+import { ThankYouModal } from './components/ThankYouModal';
 
 import { Page, Product, CartItem } from './types';
 import { INITIAL_PRODUCTS } from './services/productData';
@@ -83,6 +84,44 @@ const App: React.FC = () => {
   const [fastCheckoutItems, setFastCheckoutItems] = useState<
     { productId: string; name: string; quantity: number; price: number; volume?: string; image?: string }[]
   >([]);
+
+  // Post-checkout Thank You Modal state
+  const [thankYouOrder, setThankYouOrder] = useState<{
+    isOpen: boolean;
+    orderId?: string | null;
+    customerEmail?: string | null;
+  }>({ isOpen: false });
+
+  // Listen for return from Square Checkout
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderStatus = urlParams.get('order_status');
+      const orderId = urlParams.get('orderId') || urlParams.get('order_id') || urlParams.get('transactionId');
+      const checkoutStatus = urlParams.get('checkout');
+
+      if (orderStatus === 'success' || checkoutStatus === 'success' || (orderId && !urlParams.has('error'))) {
+        // Clear cart
+        setCartItems([]);
+        localStorage.removeItem(CART_STORAGE_KEY);
+
+        // Open elegant thank you modal
+        setThankYouOrder({
+          isOpen: true,
+          orderId: orderId || null,
+          customerEmail: urlParams.get('buyer_email') || null
+        });
+
+        // Clean the URL without page reload
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch (e) {
+      console.warn('Error reading order parameters from URL', e);
+    }
+  }, []);
 
   // Sync cart with localStorage
   useEffect(() => {
@@ -194,8 +233,17 @@ const App: React.FC = () => {
   };
 
   const handleOrderSuccess = (result: CheckoutResult) => {
-    // Empty cart if checkout matched cart
+    // Empty cart
     setCartItems([]);
+    localStorage.removeItem(CART_STORAGE_KEY);
+    setIsFastCheckoutOpen(false);
+
+    // Open elegant thank you modal
+    setThankYouOrder({
+      isOpen: true,
+      orderId: result.orderId || null,
+      customerEmail: null
+    });
   };
 
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -435,6 +483,26 @@ const App: React.FC = () => {
           setIsFastCheckoutOpen(false);
           setSelectedProduct(null);
           setCurrentPage('shop');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
+      {/* Elegant Post-Purchase Thank You Modal */}
+      <ThankYouModal
+        isOpen={thankYouOrder.isOpen}
+        orderId={thankYouOrder.orderId}
+        customerEmail={thankYouOrder.customerEmail}
+        onClose={() => setThankYouOrder({ isOpen: false })}
+        onContinueShopping={() => {
+          setThankYouOrder({ isOpen: false });
+          setSelectedProduct(null);
+          setCurrentPage('shop');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onExploreConsultations={() => {
+          setThankYouOrder({ isOpen: false });
+          setSelectedProduct(null);
+          setCurrentPage('appointments');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />

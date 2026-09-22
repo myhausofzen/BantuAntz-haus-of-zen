@@ -87,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         line_items: lineItems
       },
       checkout_options: {
-        redirect_url: redirectUrl || 'https://www.myhausofzen.com',
+        redirect_url: redirectUrl || 'https://www.myhausofzen.com?order_status=success',
         ask_for_shipping_address: true,
         accepted_payment_methods: {
           apple_pay: true,
