@@ -85,12 +85,16 @@ const App: React.FC = () => {
     { productId: string; name: string; quantity: number; price: number; volume?: string; image?: string }[]
   >([]);
 
-  // Post-checkout Thank You Modal state
+  // Post-checkout Thank You Modal state - open to preview order KRL5aRqPnUdImij1usE7WwMAT0SZY
   const [thankYouOrder, setThankYouOrder] = useState<{
     isOpen: boolean;
     orderId?: string | null;
     customerEmail?: string | null;
-  }>({ isOpen: false });
+  }>({
+    isOpen: true,
+    orderId: 'KRL5aRqPnUdImij1usE7WwMAT0SZY',
+    customerEmail: 'patron@myhausofzen.com'
+  });
 
   // Listen for return from Square Checkout
   useEffect(() => {
@@ -564,7 +568,18 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex gap-6 text-[10px] tracking-widest uppercase font-sans opacity-70">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] tracking-widest uppercase font-sans opacity-80">
+             <button
+               type="button"
+               onClick={() => setThankYouOrder({
+                 isOpen: true,
+                 orderId: 'KRL5aRqPnUdImij1usE7WwMAT0SZY',
+                 customerEmail: 'patron@myhausofzen.com'
+               })}
+               className="hover:underline underline-offset-4 text-amber-800 font-semibold cursor-pointer"
+             >
+               ✨ Preview Thank You Pop-Up
+             </button>
              <a href="#" className="hover:underline underline-offset-4">Privacy Policy</a>
              <a href="#" className="hover:underline underline-offset-4">Terms of Service</a>
           </div>
