@@ -85,13 +85,13 @@ const App: React.FC = () => {
     { productId: string; name: string; quantity: number; price: number; volume?: string; image?: string }[]
   >([]);
 
-  // Post-checkout Thank You Modal state - open to preview order KRL5aRqPnUdImij1usE7WwMAT0SZY
+  // Post-checkout Thank You Modal state
   const [thankYouOrder, setThankYouOrder] = useState<{
     isOpen: boolean;
     orderId?: string | null;
     customerEmail?: string | null;
   }>({
-    isOpen: true,
+    isOpen: false,
     orderId: 'KRL5aRqPnUdImij1usE7WwMAT0SZY',
     customerEmail: 'patron@myhausofzen.com'
   });
