@@ -14,21 +14,21 @@
   "dependencies": {
     "@google/genai": "^1.32.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/node": "^13.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "express": "^5.2.1",
     "lucide-react": "^0.556.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "resend": "^6.28.1"
+    "resend": "^6.28.1",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
-    "@vercel/node": "^13.0.1",
-    "@vitejs/plugin-react": "^5.0.0",
     "esbuild": "^0.28.2",
-    "tsx": "^4.23.13",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "tsx": "^4.23.13"
   }
 }
