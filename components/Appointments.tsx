@@ -514,7 +514,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                     Choose Practitioner & Time
                   </h2>
                   <p className="text-xs font-sans text-stone-500 mb-6">
-                    Select your herbalist guide and reserve a dedicated quiet slot in our dispensary.
+                    Select your practitioner and preferred date.
                   </p>
 
                   {/* Practitioner Selection */}
@@ -643,10 +643,10 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                     {/* Form Left */}
                     <div className="md:col-span-7 space-y-4">
                       <h2 className="font-serif text-2xl text-stone-900">
-                        Client Information & Wellness Narrative
+                        Client Information
                       </h2>
                       <p className="text-xs font-sans text-stone-500 mb-4">
-                        Share what intentions you bring to the consultation.
+                        Please enter your contact details.
                       </p>
 
                       <div>
@@ -875,45 +875,22 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                               </button>
                             </div>
 
-                            {/* Secure Square Hosted Checkout Note */}
-                            {depositPaymentMethod !== 'pay_in_person' && (
-                              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl text-xs text-stone-600 space-y-1.5 mb-3">
-                                <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px]">
-                                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                  <span>Square Secure Hosted Checkout</span>
-                                </div>
-                                <p className="text-[11px] leading-snug">
-                                  You will be redirected to Square to securely authorize your ${selectedService.depositAmount.toFixed(2)} deposit with {depositPaymentMethod === 'apple_pay' ? 'Apple Pay' : depositPaymentMethod === 'cash_app' ? 'Cash App Pay' : 'Credit/Debit Card'}. Haus of Zen never handles or stores your payment details.
-                                </p>
-                                <div className="flex items-center gap-1.5 text-[10px] text-stone-500 pt-0.5">
-                                  <Lock className="w-3 h-3 text-stone-400" />
-                                  <span>256-Bit Square Live Encryption • PCI-DSS Level 1 Compliant</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {depositPaymentMethod === 'pay_in_person' && (
-                              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl text-xs text-stone-600 space-y-1 mb-3">
-                                <p className="text-[11px] leading-snug">
-                                  Your appointment will be reserved today, and your ${selectedService.depositAmount.toFixed(2)} deposit will be payable upon arrival at the sanctuary.
-                                </p>
-                              </div>
+                            {depositPaymentMethod !== 'pay_in_person' ? (
+                              <p className="text-[11px] text-stone-500 flex items-center justify-center gap-1.5 my-2.5">
+                                <Lock className="w-3 h-3 text-stone-400" />
+                                Secured by Square
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-stone-500 text-center my-2.5">
+                                Deposit payable upon arrival.
+                              </p>
                             )}
                           </div>
 
-                          {/* Square Live Gateway Error / Failed OK notification */}
                           {squareBookingError && (
-                            <div className="mt-2 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-sans text-amber-950 space-y-2 animate-fade-in">
-                              <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                                <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0" />
-                                <span>Payment Declined by Square Live</span>
-                              </div>
-                              <p className="text-[11px] text-amber-800 leading-tight">
-                                {squareBookingError.message}
-                              </p>
-                              <div className="text-[10px] text-stone-500 font-mono">
-                                Gateway: connect.squareup.com • Order not booked
-                              </div>
+                            <div className="mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-sans text-rose-800 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                              <span>{squareBookingError.message || 'Payment could not be completed.'}</span>
                             </div>
                           )}
 

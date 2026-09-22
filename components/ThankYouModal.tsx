@@ -64,53 +64,30 @@ export const ThankYouModal: React.FC<ThankYouModalProps> = ({
           </p>
         </div>
 
-        {/* Haus of Zen Botanical Story & Gratitude Card */}
-        <div className="mt-5 bg-white/90 border border-amber-200/80 rounded-2xl p-5 shadow-xs text-stone-800 space-y-3 text-left">
-          <div className="flex items-center gap-2 text-stone-900 font-serif text-base font-medium">
-            <Heart className="w-4 h-4 text-rose-500 fill-rose-500 flex-shrink-0" />
-            <span>With deep gratitude & warm botanical blessings</span>
-          </div>
-          
-          <p className="text-xs font-sans text-stone-600 leading-relaxed">
-            Your support allows our sacred apothecary to thrive. Every herbal tea blend, restorative womb tonic, and small-batch herbal formula is lovingly handcrafted in our sanctuary using pure whole-plant organic botanicals, reverence, and healing intention to nourish your body, soul, and sovereign vitality.
+        {/* Simple Confirmation Card */}
+        <div className="mt-5 bg-white/90 border border-stone-200/80 rounded-2xl p-5 shadow-xs text-stone-800 space-y-3 text-center">
+          <p className="text-sm font-sans text-stone-600 leading-relaxed">
+            Your remedies are being freshly prepared with care and whole-plant organic botanicals.
           </p>
 
-          {orderId && (
-            <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs font-sans">
-              <span className="text-stone-500 font-medium">Square Order Reference:</span>
-              <span className="font-mono text-stone-800 font-semibold bg-stone-100 px-2 py-0.5 rounded text-[11px]">
-                {orderId}
-              </span>
+          {(orderId || customerEmail) && (
+            <div className="pt-3 border-t border-stone-100 text-xs font-sans space-y-1.5 text-stone-600">
+              {orderId && (
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500">Order Reference:</span>
+                  <span className="font-mono text-stone-900 font-semibold bg-stone-100 px-2 py-0.5 rounded text-[11px]">
+                    {orderId}
+                  </span>
+                </div>
+              )}
+              {customerEmail && (
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500">Confirmation sent to:</span>
+                  <span className="font-medium text-stone-900">{customerEmail}</span>
+                </div>
+              )}
             </div>
           )}
-
-          {customerEmail && (
-            <div className="text-[11px] font-sans text-stone-500 flex items-center gap-1.5">
-              <span>Confirmation receipt sent to:</span>
-              <span className="font-semibold text-stone-800">{customerEmail}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Fulfillment Ritual Steps */}
-        <div className="mt-4 bg-stone-100/80 border border-stone-200/80 rounded-2xl p-4 text-xs font-sans space-y-2.5">
-          <p className="font-semibold uppercase tracking-wider text-[10px] text-stone-500">
-            What Happens Next:
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-stone-700">
-            <div className="bg-white/80 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="block font-semibold text-stone-900 text-[11px] mb-0.5">1. Handcrafting</span>
-              <span className="text-[10px] text-stone-500 leading-tight">Freshly blended in our apothecary sanctuary.</span>
-            </div>
-            <div className="bg-white/80 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="block font-semibold text-stone-900 text-[11px] mb-0.5">2. Sacred Packing</span>
-              <span className="text-[10px] text-stone-500 leading-tight">Eco-friendly pouch with custom ritual brewing guide.</span>
-            </div>
-            <div className="bg-white/80 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="block font-semibold text-stone-900 text-[11px] mb-0.5">3. Swift Delivery</span>
-              <span className="text-[10px] text-stone-500 leading-tight">Tracking details emailed directly to your inbox.</span>
-            </div>
-          </div>
         </div>
 
         {/* Action Buttons */}

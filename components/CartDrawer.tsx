@@ -161,7 +161,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-stone-400 font-sans">
-                Subtotal shown. Any fulfillment fees handled directly via Square.
+                Taxes and shipping calculated at checkout.
               </p>
 
               {/* 1. Fast Checkout */}

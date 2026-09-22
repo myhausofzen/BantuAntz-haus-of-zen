@@ -569,17 +569,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] tracking-widest uppercase font-sans opacity-80">
-             <button
-               type="button"
-               onClick={() => setThankYouOrder({
-                 isOpen: true,
-                 orderId: 'KRL5aRqPnUdImij1usE7WwMAT0SZY',
-                 customerEmail: 'patron@myhausofzen.com'
-               })}
-               className="hover:underline underline-offset-4 text-amber-800 font-semibold cursor-pointer"
-             >
-               ✨ Preview Thank You Pop-Up
-             </button>
              <a href="#" className="hover:underline underline-offset-4">Privacy Policy</a>
              <a href="#" className="hover:underline underline-offset-4">Terms of Service</a>
           </div>
