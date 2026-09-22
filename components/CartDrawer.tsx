@@ -83,11 +83,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 const itemKey = `${product.id}-${selectedVolume || 'default'}`;
                 return (
                   <div key={itemKey} className="py-4 flex gap-4 items-start">
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-16 h-16 rounded-xl object-cover border border-stone-200 flex-shrink-0"
-                    />
+                    {product.image ? (
+                      <img 
+                        src={product.image} 
+                        alt={product.name} 
+                        className="w-16 h-16 rounded-xl object-cover border border-stone-200 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400 flex-shrink-0 text-xs font-serif">
+                        Zen
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
                         <h4 className="font-serif text-sm text-stone-900 font-semibold truncate">

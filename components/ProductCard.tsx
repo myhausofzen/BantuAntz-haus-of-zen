@@ -9,6 +9,8 @@ interface ProductCardProps {
   onFastCheckout?: (product: Product, e?: React.MouseEvent) => void;
 }
 
+const FALLBACK_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=800&q=80';
+
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onSelectProduct,
@@ -17,11 +19,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [addedRecently, setAddedRecently] = React.useState(false);
 
-  const [imgSrc, setImgSrc] = React.useState(product.image);
+  const [imgSrc, setImgSrc] = React.useState(product.image || FALLBACK_PRODUCT_IMAGE);
 
   // Keep image in sync if product prop changes
   React.useEffect(() => {
-    setImgSrc(product.image);
+    setImgSrc(product.image || FALLBACK_PRODUCT_IMAGE);
   }, [product.image]);
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -60,7 +62,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-stone-100">
         <img 
-          src={imgSrc} 
+          src={imgSrc || FALLBACK_PRODUCT_IMAGE} 
           alt={product.name} 
           referrerPolicy="no-referrer"
           onError={() => {

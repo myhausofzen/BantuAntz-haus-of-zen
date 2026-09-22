@@ -15,6 +15,8 @@ interface ProductDetailProps {
   onSelectProduct: (product: Product) => void;
 }
 
+const FALLBACK_DETAIL_IMAGE = 'https://images.unsplash.com/photo-1597481499750-3e6b22637e12?auto=format&fit=crop&w=1000&q=80';
+
 export const ProductDetail: React.FC<ProductDetailProps> = ({
   product,
   allProducts,
@@ -23,7 +25,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   onFastCheckout,
   onSelectProduct
 }) => {
-  const [selectedImage, setSelectedImage] = useState<string>(product.image);
+  const [selectedImage, setSelectedImage] = useState<string>(product.image || FALLBACK_DETAIL_IMAGE);
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedSize, setSelectedSize] = useState<string>(
     product.sizeOptions?.[0] || product.volume
@@ -33,14 +35,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   const [isAdded, setIsAdded] = useState(false);
 
   React.useEffect(() => {
-    setSelectedImage(product.image);
+    setSelectedImage(product.image || FALLBACK_DETAIL_IMAGE);
     setSelectedSize(product.sizeOptions?.[0] || product.volume);
   }, [product]);
 
   // Gallery list
-  const gallery = product.gallery && product.gallery.length > 0 
-    ? product.gallery 
-    : [product.image];
+  const gallery = (product.gallery && product.gallery.filter(Boolean).length > 0)
+    ? product.gallery.filter(Boolean)
+    : [product.image || FALLBACK_DETAIL_IMAGE];
 
   // Related pairings (products in same intent or category, excluding current)
   const relatedProducts = allProducts

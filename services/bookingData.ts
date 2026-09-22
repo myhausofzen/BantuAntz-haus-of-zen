@@ -4,11 +4,10 @@ export const PRACTITIONERS: Practitioner[] = [
   {
     id: 'practitioner_Nicole',
     name: 'Nicole Little',
-    // We leave these as empty strings just in case your TypeScript file requires them to exist
-    title: '',
-    bio: '',
-    specialty: '',
-    avatar: ''
+    title: 'Founder & Master Herbalist',
+    bio: 'Dedicated practitioner specializing in holistic womb wellness, restorative herbal tonics, and intuitive constitutional health.',
+    specialty: 'Womb Health & Botanical Medicine',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80'
   },
 ];
 

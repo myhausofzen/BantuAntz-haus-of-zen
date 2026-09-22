@@ -533,7 +533,13 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                               : 'border-stone-200 hover:border-stone-400 bg-white'
                           }`}
                         >
-                          <img src={prac.avatar} alt={prac.name} className="w-12 h-12 rounded-full object-cover" />
+                          {prac.avatar ? (
+                            <img src={prac.avatar} alt={prac.name} className="w-12 h-12 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-amber-100/90 border border-amber-300/80 text-amber-900 flex items-center justify-center font-serif text-sm font-semibold flex-shrink-0">
+                              {prac.name.split(' ').map(n => n[0]).join('') || 'HZ'}
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <h4 className="font-serif text-sm text-stone-900 font-semibold truncate">{prac.name}</h4>
                             <p className="text-[10px] text-stone-500 font-sans truncate">{prac.title}</p>
