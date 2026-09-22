@@ -302,9 +302,6 @@ const App: React.FC = () => {
             onSelectProduct={handleSelectProduct}
             onAddToCart={(p) => handleAddToCart(p, 1)}
             onFastCheckout={(p) => handleTriggerFastCheckoutForProduct(p, 1)}
-            onSyncSquareCatalog={() => syncSquareCatalog(true)}
-            isSyncingCatalog={isCatalogSyncing}
-            lastSyncTime={lastSyncTime}
           />
         );
       case 'appointments':

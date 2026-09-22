@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, Sparkles, RefreshCw, X, ArrowUpDown, ShieldCheck } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, X, ArrowUpDown, ShieldCheck } from 'lucide-react';
 import { Product, ProductCategory, ProductIntent } from '../types';
 import { ProductCard } from './ProductCard';
 
@@ -8,19 +8,13 @@ interface ShopProps {
   onSelectProduct: (product: Product) => void;
   onAddToCart: (product: Product) => void;
   onFastCheckout: (product: Product) => void;
-  onSyncSquareCatalog?: () => void;
-  isSyncingCatalog?: boolean;
-  lastSyncTime?: string | null;
 }
 
 export const Shop: React.FC<ShopProps> = ({
   products,
   onSelectProduct,
   onAddToCart,
-  onFastCheckout,
-  onSyncSquareCatalog,
-  isSyncingCatalog = false,
-  lastSyncTime
+  onFastCheckout
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -116,32 +110,6 @@ export const Shop: React.FC<ShopProps> = ({
               <p className="font-sans text-sm text-stone-600 max-w-xl mt-2 leading-relaxed">
                 Small-batch biodynamic botanical tinctures, ceremonial teas, and somatic wellness artifacts crafted to restore equilibrium.
               </p>
-            </div>
-
-            {/* Live Square Sync Indicator & Action */}
-            <div className="flex items-center gap-2 self-start md:self-end">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100/90 border border-stone-200/80 text-xs text-stone-700 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-sans font-medium text-[11px] tracking-wide text-stone-800">Square Store Synced</span>
-                {lastSyncTime && (
-                  <span className="text-[10px] text-stone-400 border-l border-stone-300 pl-2">
-                    {lastSyncTime}
-                  </span>
-                )}
-              </div>
-              {onSyncSquareCatalog && (
-                <button
-                  onClick={onSyncSquareCatalog}
-                  disabled={isSyncingCatalog}
-                  title="Sync products and prices from Square Store"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-stone-50 border border-stone-200 text-xs text-stone-700 transition-colors shadow-xs disabled:opacity-60 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCatalog ? 'animate-spin text-amber-600' : 'text-stone-500'}`} />
-                  <span className="text-[11px] font-sans font-semibold text-stone-700">
-                    {isSyncingCatalog ? 'Syncing...' : 'Sync'}
-                  </span>
-                </button>
-              )}
             </div>
           </div>
 
