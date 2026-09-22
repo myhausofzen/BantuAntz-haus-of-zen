@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSquareLiveCatalog } from '../../services/squareCatalogSync';
+import { getSquareLiveCatalog } from '../lib/squareCatalogSync';
 
 function getSquareCredentials() {
-  const token = process.env.SQUARE_ACCESS_TOKEN || process.env.VITE_SQUARE_ACCESS_TOKEN || '';
+  const token = process.env.SQUARE_ACCESS_TOKEN || '';
   const appId = process.env.SQUARE_APPLICATION_ID || process.env.VITE_SQUARE_APP_ID || '';
   const locationId = process.env.SQUARE_LOCATION_ID || process.env.VITE_SQUARE_LOCATION_ID || '';
-  const env = (process.env.SQUARE_ENVIRONMENT || process.env.VITE_SQUARE_ENVIRONMENT || 'production').toLowerCase();
+  const env = (process.env.SQUARE_ENVIRONMENT || 'production').toLowerCase();
   const isProduction = env !== 'sandbox';
   const baseUrl = isProduction ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
 

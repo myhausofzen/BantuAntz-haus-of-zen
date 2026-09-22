@@ -5,12 +5,6 @@ export interface FastCheckoutPayload {
   customerPhone?: string;
   paymentMethod: 'card' | 'apple_pay' | 'google_pay' | 'cash_app' | 'square_hosted';
   sourceId?: string;
-  cardDetails?: {
-    cardNumber?: string;
-    expiry?: string;
-    cvv?: string;
-    postalCode?: string;
-  };
   shippingAddress?: {
     line1: string;
     city: string;
@@ -223,7 +217,6 @@ export const chargeSquareCard = async (payload: {
   referenceId?: string;
   items?: { name: string; quantity: number | string; price?: number }[];
   transactionType?: 'product_order' | 'appointment_deposit';
-  cardDetails?: any;
 }) => {
   const result = await safeFetchJson<any>('/api/square/pay', {
     method: 'POST',

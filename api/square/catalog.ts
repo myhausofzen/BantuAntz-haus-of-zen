@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSquareLiveCatalog } from '../../services/squareCatalogSync';
+import { getSquareLiveCatalog } from '../lib/squareCatalogSync';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS

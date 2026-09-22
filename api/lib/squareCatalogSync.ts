@@ -1,5 +1,5 @@
-import { Product } from '../types';
-import { INITIAL_PRODUCTS } from './productData';
+import { Product } from '../../types';
+import { INITIAL_PRODUCTS } from '../../services/productData';
 
 export interface CatalogCache {
   timestamp: number;
@@ -14,16 +14,8 @@ export function invalidateCatalogCache() {
 }
 
 export function getSquareCredentials() {
-  const token =
-    process.env.SQUARE_ACCESS_TOKEN ||
-    process.env.VITE_SQUARE_ACCESS_TOKEN ||
-    '';
-
-  const env = (
-    process.env.SQUARE_ENVIRONMENT ||
-    process.env.VITE_SQUARE_ENVIRONMENT ||
-    'production'
-  ).toLowerCase();
+  const token = process.env.SQUARE_ACCESS_TOKEN || '';
+  const env = (process.env.SQUARE_ENVIRONMENT || 'production').toLowerCase();
 
   const baseUrl =
     env === 'sandbox'
@@ -99,7 +91,6 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
 
     const squareItems = data.objects?.filter((o: any) => o.type === 'ITEM' && !o.is_deleted) || [];
 
-    // Map curated products by Square catalog Item ID, standard ID, and lowercase trimmed name
     const curatedById = new Map<string, Product>();
     const curatedByName = new Map<string, Product>();
     INITIAL_PRODUCTS.forEach(p => {
@@ -126,7 +117,6 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
         }
       }
 
-      // Variations
       const rawVariations = (itemData.variations || []).filter((v: any) => !v.is_deleted);
       const variations = rawVariations.map((v: any) => {
         const vData = v.item_variation_data || {};
@@ -186,7 +176,6 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
       syncedProducts.push(productObj);
     }
 
-    // Preserve any flagship curated formulations (like Vitalitea) if not directly returned by Square
     INITIAL_PRODUCTS.forEach(p => {
       if (!matchedCuratedIds.has(p.id) && !syncedProducts.some(sp => sp.id === p.id || sp.name.toLowerCase() === p.name.toLowerCase())) {
         syncedProducts.unshift(p);

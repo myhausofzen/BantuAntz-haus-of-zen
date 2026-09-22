@@ -3,13 +3,13 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { Resend } from 'resend';
 import { INITIAL_PRODUCTS } from './services/productData';
-import { getSquareLiveCatalog, invalidateCatalogCache } from './services/squareCatalogSync';
+import { getSquareLiveCatalog, invalidateCatalogCache } from './api/lib/squareCatalogSync';
 
 const PORT = 3000;
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend | null {
-  const apiKey = (process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY || '').trim();
+  const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) {
     return null;
   }
@@ -20,11 +20,11 @@ function getResendClient(): Resend | null {
 }
 
 function getSquareCredentials() {
-  const token = process.env.SQUARE_ACCESS_TOKEN || process.env.VITE_SQUARE_ACCESS_TOKEN || '';
+  const token = process.env.SQUARE_ACCESS_TOKEN || '';
   const appId = process.env.SQUARE_APPLICATION_ID || process.env.VITE_SQUARE_APP_ID || '';
   const locationId = process.env.SQUARE_LOCATION_ID || process.env.VITE_SQUARE_LOCATION_ID || '';
   // Default to 'production' (live) mode per explicit requirement
-  const env = (process.env.SQUARE_ENVIRONMENT || process.env.VITE_SQUARE_ENVIRONMENT || 'production').toLowerCase();
+  const env = (process.env.SQUARE_ENVIRONMENT || 'production').toLowerCase();
   const isProduction = env !== 'sandbox';
   const baseUrl = isProduction ? 'https://connect.squareup.com' : 'https://connect.squareupsandbox.com';
 

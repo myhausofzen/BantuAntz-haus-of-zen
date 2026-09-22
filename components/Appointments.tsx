@@ -47,14 +47,10 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
   const [clientPhone, setClientPhone] = useState('');
   const [intentionNotes, setIntentionNotes] = useState('');
 
-  // Payment method and card states for deposit
+  // Payment method for deposit
   const [depositPaymentMethod, setDepositPaymentMethod] = useState<'card' | 'apple_pay' | 'cash_app' | 'pay_in_person'>('card');
-  const [cardNum, setCardNum] = useState('');
-  const [cardExp, setCardExp] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [cardZip, setCardZip] = useState('90802');
 
-  // Pending hosted checkout state for Apple Pay / Cash App
+  // Pending hosted checkout state for online payments (Card, Apple Pay, Cash App)
   const [pendingHostedBooking, setPendingHostedBooking] = useState<{
     orderId: string;
     paymentLinkUrl: string;
@@ -165,81 +161,7 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
       return;
     }
 
-    // OPTION 2: Direct Credit Card Deposit via Square Live API
-    if (depositPaymentMethod === 'card') {
-      const cleanNum = cardNum.replace(/\s/g, '');
-      if (cleanNum.length < 13) {
-        setIsProcessing(false);
-        setSquareBookingError({
-          message: 'Please enter a valid credit card number.',
-          isFailedOk: true,
-          errorCode: 'INVALID_CARD_NUMBER'
-        });
-        return;
-      }
-      if (!cardExp || cardExp.length < 4) {
-        setIsProcessing(false);
-        setSquareBookingError({
-          message: 'Please enter card expiration (MM/YY).',
-          isFailedOk: true,
-          errorCode: 'INVALID_EXPIRY'
-        });
-        return;
-      }
-      if (!cardCvv || cardCvv.length < 3) {
-        setIsProcessing(false);
-        setSquareBookingError({
-          message: 'Please enter 3 or 4-digit CVV code.',
-          isFailedOk: true,
-          errorCode: 'INVALID_CVV'
-        });
-        return;
-      }
-
-      // Execute live charge on Square
-      const payRes = await chargeSquareCard({
-        amountCents: depositCents,
-        customerEmail: clientEmail,
-        customerName: clientName,
-        customerPhone: sanitizedPhone,
-        referenceId: refId,
-        transactionType: 'appointment_deposit',
-        note: `Haus of Zen Appointment Deposit - ${selectedService.title}`,
-        items: [{
-          name: `${selectedService.title} Deposit`,
-          quantity: 1,
-          price: selectedService.depositAmount
-        }],
-        cardDetails: {
-          cardNumber: cardNum,
-          expiry: cardExp,
-          cvv: cardCvv,
-          postalCode: cardZip
-        }
-      });
-
-      if (payRes.success && (payRes.status === 'COMPLETED' || payRes.status === 'APPROVED')) {
-        finalizeBookingRecord({
-          paymentMethod: 'card',
-          paymentStatus: 'deposit_paid',
-          squareOrderId: payRes.orderId || refId,
-          receiptUrl: payRes.receiptUrl
-        });
-        return;
-      }
-
-      // Payment failed or declined by Square Live
-      setIsProcessing(false);
-      setSquareBookingError({
-        message: payRes.detail || payRes.error || 'Payment declined by Square. Please verify your card or choose another option.',
-        isFailedOk: true,
-        errorCode: payRes.code || 'CARD_DECLINED',
-        detail: payRes.detail
-      });
-      return;
-    }
-
-    // OPTION 3: Apple Pay or Cash App Pay via Square Hosted Checkout
+    // OPTION 2: Secure Online Deposit (Card, Apple Pay, Cash App) via Square Hosted Checkout
     try {
       const squareRes = await createSquarePaymentLink({
         items: [{
@@ -926,79 +848,20 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                               </button>
                             </div>
 
-                            {/* Card Input Fields if Card Chosen */}
-                            {depositPaymentMethod === 'card' && (
-                              <div className="space-y-2.5 p-3 bg-stone-100/70 border border-stone-200 rounded-xl mb-3">
-                                <div>
-                                  <label className="block text-[10px] font-sans uppercase tracking-wider text-stone-600 mb-1">
-                                    Card Number
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="4111 2222 3333 4444"
-                                    value={cardNum}
-                                    onChange={(e) => setCardNum(e.target.value)}
-                                    maxLength={19}
-                                    className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-900"
-                                  />
-                                </div>
-                                <div className="grid grid-cols-3 gap-2">
-                                  <div>
-                                    <label className="block text-[10px] font-sans uppercase tracking-wider text-stone-600 mb-1">
-                                      Exp (MM/YY)
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="12/28"
-                                      value={cardExp}
-                                      onChange={(e) => setCardExp(e.target.value)}
-                                      maxLength={5}
-                                      className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-900"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-sans uppercase tracking-wider text-stone-600 mb-1">
-                                      CVV
-                                    </label>
-                                    <input
-                                      type="password"
-                                      placeholder="123"
-                                      value={cardCvv}
-                                      onChange={(e) => setCardCvv(e.target.value)}
-                                      maxLength={4}
-                                      className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-900"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-sans uppercase tracking-wider text-stone-600 mb-1">
-                                      ZIP Code
-                                    </label>
-                                    <input
-                                      type="text"
-                                      placeholder="90802"
-                                      value={cardZip}
-                                      onChange={(e) => setCardZip(e.target.value)}
-                                      maxLength={5}
-                                      className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-stone-900 focus:outline-none focus:border-stone-900"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] text-stone-500 pt-1">
-                                  <Lock className="w-3 h-3 text-stone-400" />
-                                  <span>256-Bit Square Live Encryption • Order only placed upon approval</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {(depositPaymentMethod === 'apple_pay' || depositPaymentMethod === 'cash_app') && (
-                              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl text-xs text-stone-600 space-y-1 mb-3">
+                            {/* Secure Square Hosted Checkout Note */}
+                            {depositPaymentMethod !== 'pay_in_person' && (
+                              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl text-xs text-stone-600 space-y-1.5 mb-3">
                                 <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px]">
                                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                                  <span>Square Hosted Checkout Gate</span>
+                                  <span>Square Secure Hosted Checkout</span>
                                 </div>
                                 <p className="text-[11px] leading-snug">
-                                  You will be redirected to Square to securely authorize your deposit with {depositPaymentMethod === 'apple_pay' ? 'Apple Pay' : 'Cash App Pay'}. Your appointment is reserved only after payment is accepted.
+                                  You will be redirected to Square to securely authorize your ${selectedService.depositAmount.toFixed(2)} deposit with {depositPaymentMethod === 'apple_pay' ? 'Apple Pay' : depositPaymentMethod === 'cash_app' ? 'Cash App Pay' : 'Credit/Debit Card'}. Haus of Zen never handles or stores your payment details.
                                 </p>
+                                <div className="flex items-center gap-1.5 text-[10px] text-stone-500 pt-0.5">
+                                  <Lock className="w-3 h-3 text-stone-400" />
+                                  <span>256-Bit Square Live Encryption • PCI-DSS Level 1 Compliant</span>
+                                </div>
                               </div>
                             )}
 
