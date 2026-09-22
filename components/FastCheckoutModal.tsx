@@ -80,15 +80,40 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
 
     let isMounted = true;
 
-    async function initSquarePaymentCard() {
-      if (typeof window === 'undefined' || !(window as any).Square) {
-        setSdkLoadError('Square Web Payments script is loading...');
-        return;
+    async function waitForSquareSDK(): Promise<boolean> {
+      if (typeof window === 'undefined') return false;
+      if ((window as any).Square) return true;
+
+      // Ensure script tag exists
+      let script = document.querySelector('script[src*="square.js"]') as HTMLScriptElement;
+      if (!script) {
+        script = document.createElement('script');
+        script.src = 'https://web.squarecdn.com/v1/square.js';
+        script.type = 'text/javascript';
+        document.head.appendChild(script);
       }
 
+      // Retry up to 5 seconds
+      for (let i = 0; i < 25; i++) {
+        if ((window as any).Square) return true;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return !!(window as any).Square;
+    }
+
+    async function initSquarePaymentCard() {
       try {
         setIsInitializingCard(true);
         setSdkLoadError(null);
+
+        const isReady = await waitForSquareSDK();
+        if (!isMounted) return;
+
+        if (!isReady || !(window as any).Square) {
+          setSdkLoadError('Square Payments script is taking longer to load.');
+          setSquareCardReady(false);
+          return;
+        }
 
         if (cardInstanceRef.current) {
           try {
@@ -105,7 +130,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
         const card = await payments.card({
           style: {
             input: {
-              fontSize: '13px',
+              fontSize: '14px',
               fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
               color: '#1c1917'
             },
@@ -114,7 +139,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
             },
             '.input-container': {
               borderColor: '#e7e5e4',
-              borderRadius: '8px'
+              borderRadius: '10px'
             },
             '.input-container.is-focus': {
               borderColor: '#1c1917'
@@ -132,10 +157,11 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
           await card.attach('#square-card-container');
           cardInstanceRef.current = card;
           setSquareCardReady(true);
+          setSdkLoadError(null);
         }
       } catch (err: any) {
         console.warn('Square Web Payments Card initialization notice:', err);
-        setSdkLoadError(err.message || 'Could not load inline card component');
+        setSdkLoadError(err.message || 'Direct card form could not mount in this view.');
         setSquareCardReady(false);
       } finally {
         if (isMounted) {
@@ -146,7 +172,7 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
 
     const timer = setTimeout(() => {
       initSquarePaymentCard();
-    }, 150);
+    }, 100);
 
     return () => {
       isMounted = false;
@@ -715,20 +741,38 @@ export const FastCheckoutModal: React.FC<FastCheckoutModalProps> = ({
                 {/* Container where Square Web Payments SDK attaches */}
                 <div 
                   id="square-card-container" 
-                  className={`min-h-[90px] transition-opacity ${squareCardReady ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`} 
+                  className={`w-full transition-opacity min-h-[95px] ${squareCardReady ? 'opacity-100 block' : 'opacity-70'}`} 
                 />
 
                 {sdkLoadError && !squareCardReady && (
-                  <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1.5">
-                    <p className="font-medium">Direct card tokenization unavailable in this window view.</p>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('square_hosted')}
-                      className="text-amber-900 underline font-semibold flex items-center gap-1 text-[11px]"
-                    >
-                      <span>Switch to Square Hosted Checkout</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
+                  <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <ShieldCheck className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-stone-900">Direct Square Payment</p>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          When viewed inside embedded preview frames, bank regulations require an unnested window or Square checkout link to complete your payment directly to your Haus of Zen account.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('square_hosted')}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-sans font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      >
+                        <span>Continue with Square Checkout</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.open(window.location.href, '_blank')}
+                        className="px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 font-sans font-medium text-[11px] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      >
+                        <span>Open in Full Browser Tab</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 )}
 
