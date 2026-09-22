@@ -7,7 +7,7 @@ export interface CatalogCache {
 }
 
 let catalogCache: CatalogCache | null = null;
-const CATALOG_CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+const CATALOG_CACHE_TTL_MS = 30 * 1000; // 30 seconds TTL for fast updates
 
 export function invalidateCatalogCache() {
   catalogCache = null;
@@ -176,22 +176,21 @@ export async function getSquareLiveCatalog(forceRefresh = false): Promise<{
       syncedProducts.push(productObj);
     }
 
-    INITIAL_PRODUCTS.forEach(p => {
-      if (!matchedCuratedIds.has(p.id) && !syncedProducts.some(sp => sp.id === p.id || sp.name.toLowerCase() === p.name.toLowerCase())) {
-        syncedProducts.unshift(p);
-      }
-    });
+    // Square is the single source of truth when connected:
+    // If Square has active products, only show those products. Do NOT re-add deleted products!
+    // Only fallback to INITIAL_PRODUCTS if Square returned 0 items (e.g. brand new account with no products yet).
+    const finalProducts = syncedProducts.length > 0 ? syncedProducts : INITIAL_PRODUCTS;
 
     catalogCache = {
       timestamp: now,
-      products: syncedProducts
+      products: finalProducts
     };
 
     return {
-      products: syncedProducts,
+      products: finalProducts,
       source: 'live',
       lastSynced: new Date(now).toISOString(),
-      count: syncedProducts.length
+      count: finalProducts.length
     };
   } catch (err: any) {
     console.error('Error in Square Live Catalog sync:', err);

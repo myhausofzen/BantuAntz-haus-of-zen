@@ -56,10 +56,10 @@ const App: React.FC = () => {
     // Initial fetch from Square live catalog
     syncSquareCatalog(false);
 
-    // Auto-sync every 2 minutes so any changes made in the Square POS / app automatically reflect
+    // Auto-sync every 60 seconds so any changes made in the Square POS / app automatically reflect
     const interval = setInterval(() => {
       syncSquareCatalog(false);
-    }, 120000);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
