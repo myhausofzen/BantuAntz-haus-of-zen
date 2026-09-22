@@ -1,0 +1,8 @@
+{
+  "name": "Haus of Zen",
+  "description": "Handcrafted all-natural herbal teas and botanical wellness products specializing in womb health. Features apothecary dispensary, dedicated shop, single product detail pages with instant checkout, and holistic appointment booking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
