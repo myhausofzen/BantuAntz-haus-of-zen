@@ -7,7 +7,7 @@ export const PRACTITIONERS: Practitioner[] = [
     title: 'Founder & Master Herbalist',
     bio: 'Dedicated practitioner specializing in holistic womb wellness, restorative herbal tonics, and intuitive constitutional health.',
     specialty: 'Womb Health & Botanical Medicine',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80'
+    avatar: '/untitled_42.png'
   },
 ];
 

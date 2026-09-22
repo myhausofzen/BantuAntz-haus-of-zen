@@ -522,27 +522,34 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                     <label className="block text-xs font-sans font-medium uppercase tracking-wider text-stone-600 mb-2">
                       Apothecary Practitioner
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       {PRACTITIONERS.map((prac) => (
                         <div
                           key={prac.id}
                           onClick={() => setSelectedPractitioner(prac)}
-                          className={`p-3 rounded-xl border cursor-pointer flex items-center gap-3 transition-all ${
+                          className={`p-3.5 rounded-2xl border cursor-pointer flex items-center gap-3.5 transition-all ${
                             selectedPractitioner.id === prac.id
-                              ? 'border-stone-900 bg-stone-50 ring-1 ring-stone-900 shadow-sm'
+                              ? 'border-stone-900 bg-amber-50/50 ring-1 ring-stone-900 shadow-sm'
                               : 'border-stone-200 hover:border-stone-400 bg-white'
                           }`}
                         >
                           {prac.avatar ? (
-                            <img src={prac.avatar} alt={prac.name} className="w-12 h-12 rounded-full object-cover" />
+                            <img 
+                              src={prac.avatar} 
+                              alt={prac.name} 
+                              className="w-14 h-14 rounded-full object-cover object-top border-2 border-amber-200/90 shadow-xs flex-shrink-0" 
+                            />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-amber-100/90 border border-amber-300/80 text-amber-900 flex items-center justify-center font-serif text-sm font-semibold flex-shrink-0">
+                            <div className="w-14 h-14 rounded-full bg-amber-100/90 border border-amber-300/80 text-amber-900 flex items-center justify-center font-serif text-base font-semibold flex-shrink-0">
                               {prac.name.split(' ').map(n => n[0]).join('') || 'HZ'}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <h4 className="font-serif text-sm text-stone-900 font-semibold truncate">{prac.name}</h4>
-                            <p className="text-[10px] text-stone-500 font-sans truncate">{prac.title}</p>
+                            <h4 className="font-serif text-base text-stone-900 font-semibold truncate">{prac.name}</h4>
+                            <p className="text-[11px] text-amber-900 font-sans font-medium truncate">{prac.title || 'Founder & Master Herbalist'}</p>
+                            {prac.specialty && (
+                              <p className="text-[10px] text-stone-500 font-sans truncate mt-0.5">{prac.specialty}</p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -720,9 +727,23 @@ export const Appointments: React.FC<AppointmentsProps> = ({ onNavigateToShop }) 
                         <h4 className="font-serif text-lg text-stone-900 leading-snug">
                           {selectedService.title}
                         </h4>
-                        <p className="text-xs text-stone-500 font-sans mt-0.5">
-                          With {selectedPractitioner.name}
-                        </p>
+                        <div className="flex items-center gap-2.5 mt-2">
+                          {selectedPractitioner.avatar ? (
+                            <img 
+                              src={selectedPractitioner.avatar} 
+                              alt={selectedPractitioner.name} 
+                              className="w-9 h-9 rounded-full object-cover object-top border border-amber-300 shadow-xs flex-shrink-0"
+                            />
+                          ) : null}
+                          <div>
+                            <p className="text-xs font-semibold text-stone-900 font-sans">
+                              {selectedPractitioner.name}
+                            </p>
+                            <p className="text-[10px] text-amber-900 font-sans">
+                              {selectedPractitioner.title || 'Founder & Master Herbalist'}
+                            </p>
+                          </div>
+                        </div>
 
                         <div className="mt-4 pt-4 border-t border-stone-200 space-y-2 text-xs font-sans text-stone-600">
                           <div className="flex justify-between">
